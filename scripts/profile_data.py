@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from explore_data import get_project_root, discover_csv_files
+from scripts.explore_data import get_project_root, discover_csv_files
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def profile_data(file_path: Path) -> None:
     # Check duplicate rows
     duplicate_count = df.duplicated().sum()
     print(f"\nDuplicate rows: {duplicate_count}")
-    
+
     check_invalid_values(df)
 
 

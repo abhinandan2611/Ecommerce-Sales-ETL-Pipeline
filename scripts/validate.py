@@ -184,7 +184,7 @@ def validate_dates(df: pd.DataFrame) -> bool:
 def separate_valid_invalid(
     df: pd.DataFrame,
     output_folder: Path
-) -> None:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Separate valid records from records requiring investigation."""
 
     # Identify records that violate our business rules
@@ -235,6 +235,7 @@ def separate_valid_invalid(
 
     logger.info("Valid records: %s", len(valid_records))
     logger.info("Quarantined records: %s", len(quarantined_records))
+    return valid_records, quarantined_records
 
 
 

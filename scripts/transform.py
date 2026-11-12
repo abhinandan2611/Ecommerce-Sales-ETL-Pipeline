@@ -89,7 +89,6 @@ def investigate_relationships(df: pd.DataFrame) -> None:
    ) 
     print(name_price_check.head(10))
 
-    print(name_price_check.head(10))
 
     print("\nCountry and region investigation:")
 
