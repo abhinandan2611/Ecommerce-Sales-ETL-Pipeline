@@ -2,24 +2,36 @@
 
 An end-to-end ETL (Extract, Transform, Load) pipeline built using **Python, Pandas, SQL Server and SQLAlchemy** to process e-commerce sales data, identify data-quality issues, validate records and load reliable data into a relational database.
 
+The project demonstrates an automated data engineering workflow, including data extraction, transformation, validation, quarantine management, database loading, logging and automated testing.
+
+---
+
 ## 1. Project Overview
 
 E-commerce businesses generate large volumes of transactional data. However, raw datasets often contain missing values, duplicate records, inconsistent formats and invalid numerical values.
 
 This project demonstrates how to build an automated ETL pipeline that processes raw e-commerce sales data, applies data-cleaning and validation rules, separates invalid records for further investigation, and loads the resulting datasets into Microsoft SQL Server.
 
-The pipeline also includes execution logging, error handling and performance monitoring.
+The pipeline also includes:
+
+- Automated data-quality checks
+- Error handling and logging
+- Quarantine management
+- SQL Server integration
+- Automated testing using Pytest
+- Execution-time monitoring
 
 ## 2. Project Objectives
 
 - Extract raw e-commerce sales data from CSV files.
-- Explore and profile the dataset to identify data-quality issues.
-- Clean duplicate records and standardize inconsistent values.
+- Explore and profile datasets to identify data-quality issues.
+- Remove duplicate records and standardize inconsistent values.
 - Validate data types, dates and numerical values.
 - Separate valid records from invalid records.
 - Store invalid records in a quarantine table with rejection reasons.
 - Load validated data into SQL Server.
 - Monitor pipeline execution through logging and execution-time tracking.
+- Test individual pipeline components using automated tests.
 
 ## 3. Technology Stack
 
@@ -32,6 +44,8 @@ The pipeline also includes execution logging, error handling and performance mon
 | SQLAlchemy | Database integration and data loading |
 | PyODBC | SQL Server connectivity |
 | Python-dotenv | Environment variable management |
+| Pytest | Automated testing |
+| Pytest-cov | Test coverage measurement |
 | Git & GitHub | Version control and project hosting |
 | VS Code | Development environment |
 
@@ -39,7 +53,7 @@ The pipeline also includes execution logging, error handling and performance mon
 
 The pipeline follows four main stages:
 
-1. **Extract:** Reads the raw CSV dataset into a Pandas DataFrame.
+1. **Extract:** Reads raw CSV datasets into Pandas DataFrames.
 2. **Transform:** Removes duplicate records, standardizes values and generates a data-quality report.
 3. **Validate:** Checks data quality and separates valid and invalid records.
 4. **Load:** Loads validated records and quarantined records into separate SQL Server tables.
@@ -49,25 +63,25 @@ The pipeline follows four main stages:
 ```mermaid
 flowchart TD
     A[Raw E-Commerce CSV] --> B[Extract]
-    B --> C[Transform]
-    C --> D[Remove Duplicates]
-    D --> E[Standardize Values]
-    E --> F[Generate Quality Report]
-    F --> G[Validate Data]
-    G --> H{Validation}
-    H -->|Valid Records| I[sales_orders]
-    H -->|Invalid Records| J[quarantined_sales_orders]
-    I --> K[SQL Server]
-    J --> K
-    K --> L[SQL Verification]
+    B --> C[Explore and Profile]
+    C --> D[Transform]
+    D --> E[Remove Duplicates]
+    E --> F[Standardize Values]
+    F --> G[Generate Quality Report]
+    G --> H[Validate Data]
+    H --> I{Validation}
+    I -->|Valid Records| J[sales_orders]
+    I -->|Invalid Records| K[quarantined_sales_orders]
+    J --> L[SQL Server]
+    K --> L
     B -.-> M[Execution Logs]
-    G -.-> M
-    K -.-> M
+    H -.-> M
+    L -.-> M
 ```
 
 ## 5. Dataset Description
 
-The project uses a sample e-commerce sales dataset containing 1,012 records and 14 columns.
+The project uses a sample e-commerce sales dataset containing **1,012 records and 14 columns**.
 
 | Column | Description |
 |---|---|
@@ -97,7 +111,7 @@ The dataset intentionally includes data-quality issues to demonstrate the ETL pr
 - Inconsistent capitalization in categorical columns.
 - Negative quantities.
 - Zero or negative unit prices.
-- Invalid numerical values requiring quarantine.
+- Invalid shipping costs and discount values.
 
 ## 6. Data Transformation and Validation
 
@@ -134,7 +148,9 @@ Two datasets are generated:
 - `valid_records.csv`
 - `quarantined_records.csv`
 
-The quarantine dataset includes a `quarantine_reason` column to explain why a record was rejected.
+The quarantine dataset includes a `quarantine_reason` column explaining why a record was rejected.
+
+This allows invalid records to be investigated without allowing them into the main validated sales table.
 
 ## 7. SQL Server Database Design
 
@@ -181,7 +197,14 @@ ETL_Project/
 │   └── query.sql
 │
 ├── tests/
-│   └── test_connection.py
+│   ├── test_connection.py
+│   ├── test_explore_data.py
+│   ├── test_extract.py
+│   ├── test_load.py
+│   ├── test_logging_config.py
+│   ├── test_profile_data.py
+│   ├── test_transform.py
+│   └── test_validate.py
 │
 ├── main.py
 ├── requirements.txt
@@ -190,6 +213,8 @@ ETL_Project/
 ├── .env.example
 └── .gitignore
 ```
+
+**Note:** Raw datasets, processed datasets, log files, virtual environments and the actual `.env` configuration file are excluded from Git tracking.
 
 ## 9. Installation and Setup
 
@@ -204,8 +229,9 @@ ETL_Project/
 ### Step 1: Clone the Repository
 
 ```bash
-git clone <https://github.com/abhinandan2611/Ecommerce-Sales-ETL-Pipeline>
-cd ETL_Project
+git clone https://github.com/abhinandan2611/Ecommerce-Sales-ETL-Pipeline.git
+
+cd Ecommerce-Sales-ETL-Pipeline
 ```
 
 ### Step 2: Create a Virtual Environment
@@ -217,13 +243,19 @@ python -m venv .venv
 Activate it on Windows PowerShell:
 
 ```powershell
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 
 ### Step 3: Install Dependencies
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+For running automated tests, install:
+
+```bash
+python -m pip install pytest pytest-cov
 ```
 
 ### Step 4: Configure Environment Variables
@@ -243,7 +275,7 @@ DB_TRUST_SERVER_CERTIFICATE=yes
 
 Update the server name to match your SQL Server instance.
 
-The `.env` file should never be committed to GitHub.
+**The `.env` file should never be committed to GitHub.**
 
 ### Step 5: Create the Database and Tables
 
@@ -262,7 +294,7 @@ Place the source CSV file inside:
 data/raw/
 ```
 
-The pipeline discovers CSV files from this directory. It currently expects exactly one CSV file.
+The pipeline discovers CSV files from this directory and currently expects exactly one raw CSV file.
 
 ### Step 7: Run the ETL Pipeline
 
@@ -285,7 +317,8 @@ The following results were obtained from a successful pipeline execution.
 | Transformed records | 1,000 |
 | Valid records loaded | 982 |
 | Quarantined records | 18 |
-| Total execution time | 0.83 seconds |
+| Total records in SQL Server | 1,000 |
+| Observed execution time | 0.66 seconds |
 
 ### SQL Data Quality Verification
 
@@ -295,15 +328,64 @@ The loaded data was independently verified using SQL queries.
 |---|---|
 | Valid record count | 982 |
 | Quarantined record count | 18 |
-| Duplicate order IDs | 0 |
+| Duplicate order IDs in valid table | 0 |
+| Missing order IDs | 0 |
+| Missing product IDs | 0 |
+| Missing order dates | 0 |
+| Missing unit prices | 0 |
 | Invalid numeric values in valid table | 0 |
-| Quarantined records without reasons | 0 |
 
 These checks confirmed that the database contained the expected records and that the defined validation rules were enforced.
 
 *Execution time is based on one observed run and may vary depending on the system and dataset size.*
 
-## 11. Logging and Monitoring
+## 11. Automated Testing and Code Coverage
+
+The project includes automated tests using **Pytest** to verify individual ETL components.
+
+Test coverage includes:
+
+- CSV discovery and extraction
+- Data exploration and profiling
+- Data transformation and cleaning
+- Data validation and quarantine
+- SQL Server loading
+- Database connection
+- Logging configuration
+- Error handling and edge cases
+
+### Running Tests
+
+Run all tests:
+
+```bash
+python -m pytest
+```
+
+Run tests with coverage:
+
+```bash
+python -m pytest --cov=scripts --cov-report=term-missing
+```
+
+### Test Coverage Results
+
+The project achieved **98% overall test coverage**.
+
+| Module | Coverage |
+|---|---:|
+| explore_data.py | 98% |
+| extract.py | 100% |
+| load.py | 98% |
+| logging_config.py | 100% |
+| profile_data.py | 96% |
+| transform.py | 99% |
+| validate.py | 98% |
+| **Overall** | **98%** |
+
+The tests help verify pipeline behaviour, identify regressions and improve code reliability.
+
+## 12. Logging and Monitoring
 
 The project uses Python's logging module with console and rotating file handlers.
 
@@ -325,19 +407,19 @@ logs/etl_pipeline.log
 
 The logging configuration uses a rotating file handler with a maximum file size of 5 MB and three backup files.
 
-## 12. Future Enhancements
+## 13. Future Enhancements
 
 Potential improvements for future versions include:
 
 - Integrating Power BI for interactive sales dashboards.
-- Adding automated unit and integration tests.
 - Implementing incremental data loading instead of full refresh.
 - Adding scheduled pipeline execution.
 - Supporting multiple input formats such as Excel and JSON.
 - Introducing automated data-quality monitoring.
 - Implementing pipeline orchestration using Apache Airflow or similar tools.
+- Adding more advanced data engineering and analytical capabilities.
 
-## 13. Author
+## 14. Author
 
 **Abhinandan Manohar**
 
