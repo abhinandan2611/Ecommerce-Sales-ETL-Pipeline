@@ -478,7 +478,56 @@ logs/etl_pipeline.log
 
 The logging configuration uses a rotating file handler with a maximum file size of 5 MB and three backup files.
 
-## 13. Future Enhancements
+## 13. Power BI Dashboard
+
+The project includes an interactive Power BI dashboard connected to the SQL Server database `EcommerceDB`.
+
+The dashboard provides insights into e-commerce sales performance, product trends, regional performance and order operations.
+
+### Dashboard Pages
+
+**1. Executive Overview**
+- Total Revenue
+- Total Orders
+- Total Units Sold
+- Average Order Value
+- Monthly Revenue Trend
+- Revenue by Product Category
+- Revenue by Country
+
+**2. Product & Regional Performance**
+- Top 10 Products by Revenue
+- Revenue by Product Category
+- Revenue by Payment Method
+- Units Sold by Product Category
+- Average Order Value by Country
+
+**3. Operations & Order Analysis**
+- Order Status Distribution
+- Monthly Order Volume
+- Average Discount by Category
+- Total Shipping Cost by Country
+- Average Shipping Cost by Country
+- Delivery Rate
+
+### Dashboard Features
+
+- Interactive filters for date, country and product category.
+- Dynamic KPI calculations using DAX.
+- Sales and operational performance analysis.
+- SQL Server integration for accessing ETL output.
+
+### Accessing the Dashboard
+
+The Power BI report is available in:
+
+`reports/ETL_Dashboard.pbix`
+
+Open the file using Microsoft Power BI Desktop.
+
+**Note:** To refresh the report with updated data, configure the SQL Server connection to your own database environment and select Refresh in Power BI Desktop.
+
+## 14. Future Enhancements
 
 Potential improvements for future versions include:
 
@@ -488,9 +537,9 @@ Potential improvements for future versions include:
 - Implementing pipeline orchestration using Apache Airflow or similar tools.
 - Adding database-level audit and load-history tracking.
 - Improving scalability for larger datasets.
-- Expanding the analytical capabilities of the Power BI dashboards.
 
-## 14. Author
+
+## 15. Author
 
 **Abhinandan Manohar**
 
