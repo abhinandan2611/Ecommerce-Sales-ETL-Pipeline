@@ -2,7 +2,7 @@
 
 An end-to-end ETL (Extract, Transform, Load) pipeline built using **Python, Pandas, SQL Server and SQLAlchemy** to process e-commerce sales data, identify data-quality issues, validate records and load reliable data into a relational database.
 
-The project demonstrates an automated data engineering workflow, including data extraction, transformation, validation, quarantine management, database loading, logging and automated testing.
+The project demonstrates an automated data engineering workflow, including batch extraction, data transformation, validation, quarantine management, incremental database loading, logging, source-file archiving and automated testing.
 
 ---
 
@@ -10,26 +10,31 @@ The project demonstrates an automated data engineering workflow, including data 
 
 E-commerce businesses generate large volumes of transactional data. However, raw datasets often contain missing values, duplicate records, inconsistent formats and invalid numerical values.
 
-This project demonstrates how to build an automated ETL pipeline that processes raw e-commerce sales data, applies data-cleaning and validation rules, separates invalid records for further investigation, and loads the resulting datasets into Microsoft SQL Server.
+This project demonstrates how to build an automated ETL pipeline that processes multiple raw e-commerce sales CSV files, applies data-cleaning and validation rules, separates invalid records for further investigation, and loads the resulting datasets into Microsoft SQL Server.
 
 The pipeline also includes:
 
-- Automated data-quality checks
-- Error handling and logging
-- Quarantine management
-- SQL Server integration
-- Automated testing using Pytest
-- Execution-time monitoring
+- Batch processing of multiple CSV files.
+- Automated data-quality checks.
+- Duplicate detection and removal.
+- Incremental database loading.
+- Quarantine management.
+- Source-file archiving after successful processing.
+- Error handling and logging.
+- Automated testing using Pytest.
+- Execution-time monitoring.
 
 ## 2. Project Objectives
 
-- Extract raw e-commerce sales data from CSV files.
+- Extract raw e-commerce sales data from multiple CSV files.
 - Explore and profile datasets to identify data-quality issues.
 - Remove duplicate records and standardize inconsistent values.
 - Validate data types, dates and numerical values.
 - Separate valid records from invalid records.
 - Store invalid records in a quarantine table with rejection reasons.
-- Load validated data into SQL Server.
+- Load only new order IDs into SQL Server without deleting existing records.
+- Prevent previously loaded order IDs from being inserted again.
+- Archive successfully processed source files.
 - Monitor pipeline execution through logging and execution-time tracking.
 - Test individual pipeline components using automated tests.
 
@@ -47,41 +52,75 @@ The pipeline also includes:
 | Pytest | Automated testing |
 | Pytest-cov | Test coverage measurement |
 | Git & GitHub | Version control and project hosting |
+| Power BI | Interactive sales dashboards |
 | VS Code | Development environment |
 
 ## 4. ETL Architecture
 
 The pipeline follows four main stages:
 
-1. **Extract:** Reads raw CSV datasets into Pandas DataFrames.
-2. **Transform:** Removes duplicate records, standardizes values and generates a data-quality report.
+1. **Extract:** Discovers and reads all incoming CSV files from the raw data directory and combines them into a single DataFrame.
+2. **Transform:** Removes exact duplicate records, standardizes values and generates a data-quality report.
 3. **Validate:** Checks data quality and separates valid and invalid records.
-4. **Load:** Loads validated records and quarantined records into separate SQL Server tables.
+4. **Load:** Incrementally loads new valid records and quarantined records into separate SQL Server tables.
 
 ### Workflow
 
 ```mermaid
 flowchart TD
-    A[Raw E-Commerce CSV] --> B[Extract]
-    B --> C[Explore and Profile]
-    C --> D[Transform]
-    D --> E[Remove Duplicates]
+    A[Multiple Raw CSV Files] --> B[Batch Extraction]
+    B --> C[Combine Datasets]
+    C --> D[Transform and Clean]
+    D --> E[Remove Exact Duplicates]
     E --> F[Standardize Values]
     F --> G[Generate Quality Report]
     G --> H[Validate Data]
     H --> I{Validation}
-    I -->|Valid Records| J[sales_orders]
-    I -->|Invalid Records| K[quarantined_sales_orders]
-    J --> L[SQL Server]
+    I -->|Valid| J[Valid Records]
+    I -->|Invalid| K[Quarantined Records]
+    J --> L[Incremental Loading]
     K --> L
-    B -.-> M[Execution Logs]
-    H -.-> M
-    L -.-> M
+    L --> M[SQL Server]
+    M --> N[sales_orders]
+    M --> O[quarantined_sales_orders]
+    L --> P[Archive Source CSV Files]
+    B -.-> Q[Execution Logs]
+    H -.-> Q
+    L -.-> Q
 ```
+
+### Incremental Loading Mechanism
+
+Unlike a full-refresh approach, the pipeline does not delete existing records before loading new data.
+
+The incremental loading process:
+
+- Retrieves existing order IDs from both SQL Server tables.
+- Compares incoming order IDs against existing records.
+- Removes records whose order IDs have already been processed.
+- Removes duplicate order IDs within the incoming datasets.
+- Inserts only new valid and quarantined records.
+- Preserves previously loaded records.
+
+This prevents duplicate order IDs from being loaded again when the pipeline is executed multiple times.
+
+### Source-File Archiving
+
+After successful database loading, the pipeline automatically moves the processed CSV files from `data/raw/` to:
+
+```text
+data/processed/source_files/
+```
+
+This keeps the raw input directory ready for new incoming datasets and retains the original source files for traceability.
+
+If the database loading process fails, the source files are not archived.
 
 ## 5. Dataset Description
 
-The project uses a sample e-commerce sales dataset containing **1,012 records and 14 columns**.
+The project uses multiple e-commerce sales CSV datasets containing the same 14-column structure.
+
+The original dataset contains **1,012 records**, including 12 exact duplicate records. Additional datasets are used to demonstrate batch processing and incremental loading.
 
 | Column | Description |
 |---|---|
@@ -100,12 +139,12 @@ The project uses a sample e-commerce sales dataset containing **1,012 records an
 | payment_method | Payment method |
 | order_status | Order processing status |
 
-The dataset intentionally includes data-quality issues to demonstrate the ETL process.
+The datasets intentionally include data-quality issues to demonstrate the ETL process.
 
 ### Identified Data Quality Issues
 
 - Missing values in customer_id, unit_price, region and payment_method.
-- 12 exact duplicate records.
+- Exact duplicate records.
 - Mixed date formats.
 - Inconsistent whitespace.
 - Inconsistent capitalization in categorical columns.
@@ -162,11 +201,15 @@ Two tables are created:
 
 Stores records that pass the validation rules.
 
+- `order_id` is the primary key.
+- Stores validated sales transactions.
+- Existing records are preserved during incremental loading.
+
 ### dbo.quarantined_sales_orders
 
 Stores invalid records along with their quarantine reasons.
 
-The `order_id` column is defined as the primary key in the valid sales table.
+The incremental loading process checks order IDs across both tables to avoid processing the same order ID again.
 
 SQL scripts are available in the `sql/` directory.
 
@@ -178,6 +221,7 @@ ETL_Project/
 ├── data/
 │   ├── raw/
 │   └── processed/
+│       └── source_files/
 │
 ├── logs/
 │
@@ -286,15 +330,17 @@ Execute the SQL scripts in the following order:
 
 This creates the `EcommerceDB` database and the required tables.
 
-### Step 6: Add the Raw Dataset
+### Step 6: Add Raw Datasets
 
-Place the source CSV file inside:
+Place one or more source CSV files inside:
 
 ```text
 data/raw/
 ```
 
-The pipeline discovers CSV files from this directory and currently expects exactly one raw CSV file.
+The pipeline automatically discovers all CSV files in this directory.
+
+**Important:** All incoming CSV files must have the same column names and column order.
 
 ### Step 7: Run the ETL Pipeline
 
@@ -304,25 +350,45 @@ From the project root, execute:
 python main.py
 ```
 
-The pipeline automatically performs extraction, transformation, validation and loading.
+The pipeline automatically performs:
+
+1. Batch extraction of incoming CSV files.
+2. Data transformation and cleaning.
+3. Data validation and quarantine separation.
+4. Incremental loading into SQL Server.
+5. Source-file archiving after successful loading.
+
+### Step 8: Run Automated Tests
+
+Execute:
+
+```bash
+python -m pytest
+```
+
+To run tests with coverage:
+
+```bash
+python -m pytest --cov=scripts --cov-report=term-missing
+```
 
 ## 10. Execution Results
 
-The following results were obtained from a successful pipeline execution.
+The following results represent an initial execution using the original dataset, rather than the cumulative results from subsequent batch executions.
 
-| Metric | Result |
+| Metric | Initial Result |
 |---|---:|
 | Original records extracted | 1,012 |
 | Duplicate records removed | 12 |
 | Transformed records | 1,000 |
 | Valid records loaded | 982 |
 | Quarantined records | 18 |
-| Total records in SQL Server | 1,000 |
+| Total records processed | 1,000 |
 | Observed execution time | 0.66 seconds |
 
 ### SQL Data Quality Verification
 
-The loaded data was independently verified using SQL queries.
+The initial database load was independently verified using SQL queries.
 
 | Validation Check | Result |
 |---|---|
@@ -335,7 +401,7 @@ The loaded data was independently verified using SQL queries.
 | Missing unit prices | 0 |
 | Invalid numeric values in valid table | 0 |
 
-These checks confirmed that the database contained the expected records and that the defined validation rules were enforced.
+These checks confirmed that the initial database load contained the expected records and that the defined validation rules were enforced.
 
 *Execution time is based on one observed run and may vary depending on the system and dataset size.*
 
@@ -345,14 +411,16 @@ The project includes automated tests using **Pytest** to verify individual ETL c
 
 Test coverage includes:
 
-- CSV discovery and extraction
-- Data exploration and profiling
-- Data transformation and cleaning
-- Data validation and quarantine
-- SQL Server loading
-- Database connection
-- Logging configuration
-- Error handling and edge cases
+- CSV discovery and single-file extraction.
+- Multiple CSV file extraction and combination.
+- Data exploration and profiling.
+- Data transformation and cleaning.
+- Data validation and quarantine.
+- Incremental SQL Server loading.
+- Duplicate order ID handling.
+- Database connection.
+- Logging configuration.
+- Error handling and edge cases.
 
 ### Running Tests
 
@@ -370,7 +438,7 @@ python -m pytest --cov=scripts --cov-report=term-missing
 
 ### Test Coverage Results
 
-The project achieved **98% overall test coverage**.
+The project achieved **98% overall test coverage** in the latest reported test run.
 
 | Module | Coverage |
 |---|---:|
@@ -383,7 +451,7 @@ The project achieved **98% overall test coverage**.
 | validate.py | 98% |
 | **Overall** | **98%** |
 
-The tests help verify pipeline behaviour, identify regressions and improve code reliability.
+The test suite helps verify pipeline behaviour, identify regressions and improve code reliability.
 
 ## 12. Logging and Monitoring
 
@@ -392,12 +460,15 @@ The project uses Python's logging module with console and rotating file handlers
 Logging captures:
 
 - Pipeline execution status.
-- Extraction details.
+- Number of files extracted.
+- Number of records extracted.
 - Transformation results.
 - Validation results.
-- Database loading status.
+- Number of new valid records loaded.
+- Number of new quarantined records loaded.
 - Pipeline failures and exceptions.
 - Total execution time.
+- Source-file archiving details.
 
 Log files are stored in:
 
@@ -411,13 +482,13 @@ The logging configuration uses a rotating file handler with a maximum file size 
 
 Potential improvements for future versions include:
 
-- Integrating Power BI for interactive sales dashboards.
-- Implementing incremental data loading instead of full refresh.
-- Adding scheduled pipeline execution.
-- Supporting multiple input formats such as Excel and JSON.
-- Introducing automated data-quality monitoring.
+- Implementing scheduled pipeline execution.
+- Supporting additional input formats such as Excel and JSON.
+- Introducing automated data-quality monitoring and alerting.
 - Implementing pipeline orchestration using Apache Airflow or similar tools.
-- Adding more advanced data engineering and analytical capabilities.
+- Adding database-level audit and load-history tracking.
+- Improving scalability for larger datasets.
+- Expanding the analytical capabilities of the Power BI dashboards.
 
 ## 14. Author
 
@@ -429,4 +500,4 @@ Interests: Data Engineering, Business Intelligence, Data Analytics and Python.
 
 ---
 
-*This project was developed as a practical learning project to demonstrate an end-to-end ETL workflow using Python and Microsoft SQL Server.*
+*This project was developed as a practical learning project to demonstrate an end-to-end batch ETL workflow using Python and Microsoft SQL Server.*

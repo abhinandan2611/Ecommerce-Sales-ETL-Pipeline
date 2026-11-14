@@ -64,33 +64,41 @@ def test_prepare_dataframe_does_not_modify_original():
     # Assert
     pd.testing.assert_frame_equal(df, original_df)
 
-def test_load_data_loads_both_datasets(monkeypatch):
-    """Check that valid and quarantined records are loaded."""
 
-    # Arrange
+def test_load_data_loads_only_new_records(monkeypatch):
+    """Check that existing order IDs are skipped during loading."""
+
+    # Arrange: incoming records
     valid_df = pd.DataFrame({
-        "order_id": [1001],
-        "customer_id": [2001],
-        "product_id": [3001],
-        "order_date": ["2026-01-15"],
-        "quantity": [2]
+        "order_id": [1001, 1003],
+        "customer_id": [2001, 2003],
+        "product_id": [3001, 3003],
+        "order_date": ["2026-01-15", "2026-01-17"],
+        "quantity": [2, 3]
     })
 
     quarantine_df = pd.DataFrame({
-        "order_id": [1002],
-        "customer_id": [2002],
-        "product_id": [3002],
-        "order_date": ["2026-01-16"],
-        "quantity": [-1],
-        "quarantine_reason": ["Negative quantity"]
+        "order_id": [1002, 1004],
+        "customer_id": [2002, 2004],
+        "product_id": [3002, 3004],
+        "order_date": ["2026-01-16", "2026-01-18"],
+        "quantity": [-1, -2],
+        "quarantine_reason": [
+            "Negative quantity",
+            "Negative quantity"
+        ]
     })
 
     mock_engine = MagicMock()
     mock_connection = MagicMock()
 
-    mock_engine.begin.return_value.__enter__.return_value = (
-        mock_connection
-    )
+    mock_engine.begin.return_value.__enter__.return_value = mock_connection
+
+    # Simulate IDs already present in the database
+    mock_connection.execute.return_value.fetchall.return_value = [
+        (1001,),
+        (1002,)
+    ]
 
     monkeypatch.setattr(
         load,
@@ -98,18 +106,29 @@ def test_load_data_loads_both_datasets(monkeypatch):
         lambda: mock_engine
     )
 
-    monkeypatch.setattr(
-        pd.DataFrame,
-        "to_sql",
-        MagicMock()
-    )
+    loaded_dataframes = []
 
-    # Act
+    def mock_to_sql(self, *args, **kwargs):
+        loaded_dataframes.append(self.copy())
+
+    monkeypatch.setattr(pd.DataFrame, "to_sql", mock_to_sql)
+
+        # Act
     load.load_data(valid_df, quarantine_df)
 
-    # Assert
-    assert mock_connection.execute.call_count == 2
-    assert pd.DataFrame.to_sql.call_count == 2
+    # Assert: only new records should be loaded
+    assert len(loaded_dataframes) == 2
+
+    loaded_valid = loaded_dataframes[0]
+    loaded_quarantine = loaded_dataframes[1]
+
+    assert loaded_valid["order_id"].tolist() == [1003]
+    assert loaded_quarantine["order_id"].tolist() == [1004]
+
+    # No DELETE statements should be executed
+    executed_sql = str(mock_connection.execute.call_args.args[0])
+    assert "DELETE" not in executed_sql.upper()
+
     mock_engine.dispose.assert_called_once()
 
 
@@ -425,3 +444,49 @@ def test_load_data_when_engine_creation_fails(monkeypatch):
         match="Database connection failed"
     ):
         load_data(valid_df, quarantine_df)
+
+
+def test_load_data_removes_duplicate_ids_within_incoming_data(monkeypatch):
+    """Check that duplicate incoming order IDs are inserted only once."""
+
+    valid_df = pd.DataFrame({
+        "order_id": [1001, 1001, 1002],
+        "customer_id": [2001, 2001, 2002],
+        "product_id": [3001, 3001, 3002],
+        "order_date": ["2026-01-15", "2026-01-15", "2026-01-16"],
+        "quantity": [2, 2, 3]
+    })
+
+    quarantine_df = pd.DataFrame(columns=[
+        "order_id",
+        "customer_id",
+        "product_id",
+        "order_date",
+        "quantity"
+    ])
+
+    mock_engine = MagicMock()
+    mock_connection = MagicMock()
+
+    mock_engine.begin.return_value.__enter__.return_value = mock_connection
+    mock_connection.execute.return_value.fetchall.return_value = []
+
+    monkeypatch.setattr(
+        load,
+        "create_db_engine",
+        lambda: mock_engine
+    )
+
+    loaded_dataframes = []
+
+    def mock_to_sql(self, *args, **kwargs):
+        loaded_dataframes.append(self.copy())
+
+    monkeypatch.setattr(pd.DataFrame, "to_sql", mock_to_sql)
+
+    load.load_data(valid_df, quarantine_df)
+
+    assert len(loaded_dataframes) == 1
+    assert loaded_dataframes[0]["order_id"].tolist() == [1001, 1002]
+
+    mock_engine.dispose.assert_called_once()

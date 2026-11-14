@@ -1,4 +1,6 @@
 
+"""Extract and combine incoming e-commerce sales CSV files."""
+
 import logging
 from pathlib import Path
 
@@ -6,16 +8,15 @@ import pandas as pd
 
 from scripts.explore_data import get_project_root, discover_csv_files
 
-
 logger = logging.getLogger(__name__)
 
 
-def extract_data() -> tuple[pd.DataFrame, Path]:
+def extract_data() -> tuple[pd.DataFrame, list[Path]]:
     """
-    Discover and extract the raw CSV dataset.
+    Discover and combine all incoming CSV files.
 
     Returns:
-        A tuple containing the extracted DataFrame and source file path.
+        A tuple containing the combined DataFrame and source file paths.
     """
 
     project_root = get_project_root()
@@ -28,19 +29,41 @@ def extract_data() -> tuple[pd.DataFrame, Path]:
             f"No CSV files found in {raw_folder}"
         )
 
-    if len(csv_files) > 1:
-        raise ValueError(
-            f"Expected one raw CSV file, but found {len(csv_files)}."
+    dataframes = []
+    expected_columns = None
+
+    for file_path in csv_files:
+
+        logger.info("Extracting data from: %s", file_path.name)
+
+        df = pd.read_csv(file_path)
+
+        # Check that all files have the same columns
+        if expected_columns is None:
+            expected_columns = list(df.columns)
+
+        elif list(df.columns) != expected_columns:
+            raise ValueError(
+                f"Incompatible columns found in {file_path.name}. "
+                "All incoming CSV files must have the same columns."
+            )
+
+        dataframes.append(df)
+
+        logger.info(
+            "Extracted %s records from %s",
+            len(df),
+            file_path.name
         )
 
-    file_path = csv_files[0]
+    # Combine all extracted datasets
+    combined_df = pd.concat(
+        dataframes,
+        ignore_index=True
+    )
 
-    logger.info("Extracting data from: %s", file_path.name)
+    logger.info("Batch extraction completed successfully.")
+    logger.info("Files extracted: %s", len(csv_files))
+    logger.info("Total extracted records: %s", len(combined_df))
 
-    df = pd.read_csv(file_path)
-
-    logger.info("Extraction completed successfully.")
-    logger.info("Extracted records: %s", len(df))
-    logger.info("Extracted columns: %s", len(df.columns))
-
-    return df, file_path
+    return combined_df, csv_files

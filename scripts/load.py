@@ -87,54 +87,76 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_data(
-    valid_df: pd.DataFrame,
-    quarantine_df: pd.DataFrame
-) -> None:
-    """Load valid and quarantined records into SQL Server."""
 
-    # Prepare both datasets before changing database contents.
+def load_data(valid_df: pd.DataFrame, quarantine_df: pd.DataFrame) -> None:
+    """Load only new order IDs into SQL Server."""
+
     valid_df = prepare_dataframe(valid_df)
     quarantine_df = prepare_dataframe(quarantine_df)
 
     engine = create_db_engine()
 
     try:
-        # Load both datasets within one transaction.
         with engine.begin() as connection:
 
-            # Remove previous records for a full refresh.
-            connection.execute(
-                text("DELETE FROM dbo.sales_orders")
+            # Get order IDs already present in either database table
+            result = connection.execute(text("""
+                SELECT order_id FROM dbo.sales_orders
+                UNION
+                SELECT order_id FROM dbo.quarantined_sales_orders
+            """))
+
+            existing_ids = {
+                row[0] for row in result.fetchall()
+            }
+
+            # Remove records that already exist in the database
+            valid_df = valid_df[
+                ~valid_df["order_id"].isin(existing_ids)
+            ].copy()
+
+            # Remove duplicate IDs within the incoming valid data
+            valid_df = valid_df.drop_duplicates(
+                subset=["order_id"],
+                keep="first"
             )
 
-            connection.execute(
-                text("DELETE FROM dbo.quarantined_sales_orders")
+            # Include newly accepted valid IDs when filtering quarantine
+            existing_ids.update(valid_df["order_id"].dropna().tolist())
+
+            quarantine_df = quarantine_df[
+                ~quarantine_df["order_id"].isin(existing_ids)
+            ].copy()
+
+            quarantine_df = quarantine_df.drop_duplicates(
+                subset=["order_id"],
+                keep="first"
             )
 
-            # Load valid records.
-            valid_df.to_sql(
-                name="sales_orders",
-                schema="dbo",
-                con=connection,
-                if_exists="append",
-                index=False,
-                chunksize=500
-            )
+            # Insert only new records
+            if not valid_df.empty:
+                valid_df.to_sql(
+                    name="sales_orders",
+                    schema="dbo",
+                    con=connection,
+                    if_exists="append",
+                    index=False,
+                    chunksize=500
+                )
 
-            # Load quarantined records.
-            quarantine_df.to_sql(
-                name="quarantined_sales_orders",
-                schema="dbo",
-                con=connection,
-                if_exists="append",
-                index=False,
-                chunksize=500
-            )
+            if not quarantine_df.empty:
+                quarantine_df.to_sql(
+                    name="quarantined_sales_orders",
+                    schema="dbo",
+                    con=connection,
+                    if_exists="append",
+                    index=False,
+                    chunksize=500
+                )
 
-        logger.info("Data loading completed successfully.")
-        logger.info("Valid records loaded: %s", len(valid_df))
-        logger.info("Quarantined records loaded: %s", len(quarantine_df))
+        logger.info("Incremental data loading completed successfully.")
+        logger.info("New valid records loaded: %s", len(valid_df))
+        logger.info("New quarantined records loaded: %s", len(quarantine_df))
 
     finally:
         engine.dispose()
