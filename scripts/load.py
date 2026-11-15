@@ -162,6 +162,38 @@ def load_data(valid_df: pd.DataFrame, quarantine_df: pd.DataFrame) -> None:
         engine.dispose()
 
 
+def load_warehouse() -> None:
+    """Execute the SQL Server warehouse incremental load procedure."""
+
+    engine = create_db_engine()
+
+    try:
+        with engine.connect() as connection:
+            try:
+                logger.info("Starting data warehouse incremental load.")
+
+                connection.execute(
+                    text("EXEC dw.usp_load_warehouse")
+                )
+
+                connection.commit()
+
+                logger.info(
+                    "Data warehouse incremental load completed successfully."
+                )
+
+            except Exception:
+                connection.rollback()
+                logger.exception(
+                    "Data warehouse incremental load failed."
+                )
+                raise
+
+    finally:
+        engine.dispose()
+
+
+
 if __name__ == "__main__":
     logger.info(
         "Run the complete pipeline through main.py to load data."

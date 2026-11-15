@@ -478,11 +478,59 @@ logs/etl_pipeline.log
 
 The logging configuration uses a rotating file handler with a maximum file size of 5 MB and three backup files.
 
-## 13. Power BI Dashboard
+## 13. Data Warehouse Architecture
 
-The project includes an interactive Power BI dashboard connected to the SQL Server database `EcommerceDB`.
+The project includes a SQL Server data warehouse built using a **Star Schema** to support analytical reporting and business intelligence.
 
-The dashboard provides insights into e-commerce sales performance, product trends, regional performance and order operations.
+The warehouse consists of one central fact table and six dimension tables.
+
+### Star Schema
+
+The central `dw.fact_sales` table stores sales transactions and measures, while the dimension tables provide descriptive information for analytical queries.
+
+**Fact Table**
+- `dw.fact_sales`
+
+**Dimension Tables**
+- `dw.dim_customer`
+- `dw.dim_product`
+- `dw.dim_date`
+- `dw.dim_geography`
+- `dw.dim_payment_method`
+- `dw.dim_order_status`
+
+The detailed schema diagram is available in [`star_schema.md`](sql/warehouse/documentation/star_schema.md).
+
+### Warehouse ETL Workflow
+
+1. Extract incoming CSV files from the raw data folder.
+2. Transform and standardise the extracted records.
+3. Validate records and separate invalid records into quarantine.
+4. Incrementally load valid records into the SQL Server source tables.
+5. Execute the `dw.usp_load_warehouse` stored procedure from Python.
+6. Load new records into the warehouse dimensions and fact table.
+7. Record execution details in `dw.etl_audit_log`.
+8. Archive successfully processed source CSV files.
+
+### Data Warehouse Features
+
+- Star Schema dimensional modelling.
+- Surrogate keys for dimension tables.
+- Foreign key relationships between fact and dimension tables.
+- Unknown dimension members for handling missing values.
+- Incremental loading of new records.
+- Stored procedure-based warehouse loading.
+- ETL execution auditing and error logging.
+- Duplicate prevention and data reconciliation.
+
+### ### Technical Documentation
+
+- [Star Schema Diagram](sql/warehouse/documentation/star_schema.md)
+- [ETL Workflow Diagram](sql/warehouse/documentation/etl_workflow.md)
+
+## 14. Power BI Data Warehouse Dashboard
+
+A three-page interactive Power BI dashboard connected directly to the SQL Server data warehouse using a Star Schema model.
 
 ### Dashboard Pages
 
@@ -490,44 +538,82 @@ The dashboard provides insights into e-commerce sales performance, product trend
 - Total Revenue
 - Total Orders
 - Total Units Sold
-- Average Order Value
-- Monthly Revenue Trend
-- Revenue by Product Category
-- Revenue by Country
+- Average Order Value (AOV)
+- Average Selling Price (ASP)
+- Monthly revenue trends
+- Revenue by product category and country
 
 **2. Product & Regional Performance**
-- Top 10 Products by Revenue
-- Revenue by Product Category
-- Revenue by Payment Method
-- Units Sold by Product Category
-- Average Order Value by Country
+- Top 10 products by revenue
+- Revenue by product category
+- Average order value by country
+- Units sold by category
+- Orders by payment method
 
 **3. Operations & Order Analysis**
-- Order Status Distribution
-- Monthly Order Volume
-- Average Discount by Category
-- Total Shipping Cost by Country
-- Average Shipping Cost by Country
-- Delivery Rate
+- Delivery rate
+- Total shipping costs
+- Orders by order status
+- Monthly order volume
+- Average discount by category
+- Shipping cost analysis by country
 
-### Dashboard Features
+### Data Model
 
-- Interactive filters for date, country and product category.
-- Dynamic KPI calculations using DAX.
-- Sales and operational performance analysis.
-- SQL Server integration for accessing ETL output.
+The dashboard uses seven warehouse tables:
 
-### Accessing the Dashboard
+- `dw.fact_sales`
+- `dw.dim_customer`
+- `dw.dim_product`
+- `dw.dim_date`
+- `dw.dim_geography`
+- `dw.dim_payment_method`
+- `dw.dim_order_status`
+
+### Key Features
+
+- Star Schema dimensional model
+- Six one-to-many relationships
+- DAX-based business KPIs
+- Interactive country, date and category slicers
+- Monthly, geographical and product-level analysis
+- Incrementally refreshed warehouse data
+
+### Report File
 
 The Power BI report is available in:
 
-`reports/ETL_Dashboard.pbix`
+`reports/Ecommerce_Dashboard_DW.pbix`
 
-Open the file using Microsoft Power BI Desktop.
+Open the file using Power BI Desktop.
 
-**Note:** To refresh the report with updated data, configure the SQL Server connection to your own database environment and select Refresh in Power BI Desktop.
+### Screenshots of the Report
 
-## 14. Future Enhancements
+The following screenshots showcase the three pages of the interactive Power BI dashboard.
+
+**1. Executive Overview**
+
+[View Executive Overview Screenshot](reports/Screenshots/executive_overview.png)
+
+![Executive Overview](reports/Screenshots/executive_overview.png)
+
+**2. Product & Regional Performance**
+
+[View Product & Regional Performance Screenshot](reports/Screenshots/product_performance.png)
+
+![Product Performance](reports/Screenshots/product_performance.png)
+
+**3. Operations & Order Analysis**
+
+[View Operations & Order Analysis Screenshot](reports/Screenshots/operations_analysis.png)
+
+![Operations Analysis](reports/Screenshots/operations_analysis.png)
+
+### Download the Power BI Report
+
+[Download Ecommerce Dashboard DW](reports/Ecommerce_Dashboard_DW.pbix)
+
+## 15. Future Enhancements
 
 Potential improvements for future versions include:
 
@@ -539,7 +625,7 @@ Potential improvements for future versions include:
 - Improving scalability for larger datasets.
 
 
-## 15. Author
+## 16. Author
 
 **Abhinandan Manohar**
 

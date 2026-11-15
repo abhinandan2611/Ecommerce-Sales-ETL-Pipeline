@@ -8,7 +8,7 @@ import time
 from scripts.extract import extract_data
 from scripts.transform import transform_data
 from scripts.validate import validate_data
-from scripts.load import load_data
+from scripts.load import load_data, load_warehouse
 from scripts.logging_config import configure_logging
 from scripts.explore_data import get_project_root
 
@@ -72,19 +72,20 @@ def main() -> None:
             output_folder=processed_folder
         )
 
-        # Step 4: Incrementally load records into SQL Server
+                # Step 4: Incrementally load records into SQL Server
         load_data(
             valid_df=valid_df,
             quarantine_df=quarantine_df
         )
 
-        # Step 5: Archive source files only after successful loading
+        # Step 5: Load new records into the data warehouse
+        load_warehouse()
+
+        # Step 6: Archive source files only after successful loading
         archive_source_files(
             source_files=source_files,
             archive_folder=archive_folder
         )
-
-        logger.info("Batch ETL pipeline completed successfully.")
 
     except Exception:
         logger.exception("Batch ETL pipeline failed.")
