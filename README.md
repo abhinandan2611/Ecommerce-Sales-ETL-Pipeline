@@ -489,25 +489,16 @@ Both reports are available in the `reports/` directory.
 
 The following screenshots showcase the three pages of the warehouse-connected Power BI dashboard.
 
-**Executive Overview**
+## Power BI Dashboard Screenshots
 
-[View Executive Overview Screenshot](reports/Screenshots/executive_overview.png.png)
+### 1. Executive Overview
+![Executive Overview](reports/Screenshots/executive_overview.png)
 
-![Executive Overview](reports/Screenshots/executive_overview.png.png)
+### 2. Product Performance
+![Product Performance](reports/Screenshots/product_performance.png)
 
-**Product & Regional Performance**
-
-[View Product & Regional Performance Screenshot](reports/Screenshots/product_performance.png.png)
-
-![Product Performance](reports/Screenshots/product_performance.png.png)
-
-**Operations & Order Analysis**
-
-[View Operations & Order Analysis Screenshot](reports/Screenshots/operations_analysis.png.png)
-
-![Operations Analysis](reports/Screenshots/operations_analysis.png.png)
-
-[Download the Power BI Data Warehouse Dashboard](reports/Ecommerce_Dashboard_DW.pbix)
+### 3. Operations Analysis
+![Operations Analysis](reports/Screenshots/operations_analysis.png)
 
 ---
 
