@@ -1,8 +1,8 @@
-# E-Commerce Sales ETL Pipeline
+# E-Commerce Sales ETL Pipeline & Data Warehouse
 
-An end-to-end ETL (Extract, Transform, Load) pipeline built using **Python, Pandas, SQL Server and SQLAlchemy** to process e-commerce sales data, identify data-quality issues, validate records and load reliable data into a relational database.
+An end-to-end data engineering and business intelligence project built using **Python, Pandas, SQL Server, SQLAlchemy and Power BI** to extract, transform, validate and analyse e-commerce sales data.
 
-The project demonstrates an automated data engineering workflow, including batch extraction, data transformation, validation, quarantine management, incremental database loading, logging, source-file archiving and automated testing.
+The project demonstrates a complete data engineering workflow, including batch extraction, data transformation, data-quality validation, quarantine management, incremental loading, dimensional data modelling, automated testing and interactive business intelligence reporting.
 
 ---
 
@@ -10,9 +10,11 @@ The project demonstrates an automated data engineering workflow, including batch
 
 E-commerce businesses generate large volumes of transactional data. However, raw datasets often contain missing values, duplicate records, inconsistent formats and invalid numerical values.
 
-This project demonstrates how to build an automated ETL pipeline that processes multiple raw e-commerce sales CSV files, applies data-cleaning and validation rules, separates invalid records for further investigation, and loads the resulting datasets into Microsoft SQL Server.
+This project demonstrates how to build an automated ETL pipeline that processes multiple raw e-commerce sales CSV files, applies data-cleaning and validation rules, separates invalid records for further investigation, and loads reliable data into Microsoft SQL Server.
 
-The pipeline also includes:
+The project was subsequently extended with a dimensional data warehouse and an interactive Power BI dashboard.
+
+### Key Features
 
 - Batch processing of multiple CSV files.
 - Automated data-quality checks.
@@ -22,69 +24,81 @@ The pipeline also includes:
 - Source-file archiving after successful processing.
 - Error handling and logging.
 - Automated testing using Pytest.
-- Execution-time monitoring.
+- SQL Server data warehouse using Star Schema modelling.
+- Stored procedure-based incremental warehouse loading.
+- ETL audit logging.
+- Interactive Power BI dashboards.
+
+---
 
 ## 2. Project Objectives
 
 - Extract raw e-commerce sales data from multiple CSV files.
 - Explore and profile datasets to identify data-quality issues.
-- Remove duplicate records and standardize inconsistent values.
+- Remove duplicate records and standardise inconsistent values.
 - Validate data types, dates and numerical values.
 - Separate valid records from invalid records.
 - Store invalid records in a quarantine table with rejection reasons.
 - Load only new order IDs into SQL Server without deleting existing records.
 - Prevent previously loaded order IDs from being inserted again.
-- Archive successfully processed source files.
-- Monitor pipeline execution through logging and execution-time tracking.
+- Build a dimensional data warehouse using a Star Schema.
+- Automate warehouse loading through SQL Server stored procedures.
+- Create interactive Power BI dashboards for business analysis.
+- Monitor pipeline execution through logging and audit tracking.
 - Test individual pipeline components using automated tests.
+
+---
 
 ## 3. Technology Stack
 
 | Technology | Purpose |
 |---|---|
-| Python | ETL pipeline development |
+| Python | ETL pipeline development and orchestration |
 | Pandas | Data extraction, cleaning and transformation |
 | NumPy | Numerical operations |
-| SQL Server | Relational database storage |
+| SQL Server | Relational database and data warehouse |
+| SQL | Database queries, validation and dimensional modelling |
 | SQLAlchemy | Database integration and data loading |
 | PyODBC | SQL Server connectivity |
 | Python-dotenv | Environment variable management |
 | Pytest | Automated testing |
 | Pytest-cov | Test coverage measurement |
+| Power BI Desktop | Interactive dashboards, DAX measures and business intelligence reporting |
 | Git & GitHub | Version control and project hosting |
-| Power BI | Interactive sales dashboards |
 | VS Code | Development environment |
+
+---
 
 ## 4. ETL Architecture
 
-The pipeline follows four main stages:
+The Python pipeline follows four main stages:
 
 1. **Extract:** Discovers and reads all incoming CSV files from the raw data directory and combines them into a single DataFrame.
-2. **Transform:** Removes exact duplicate records, standardizes values and generates a data-quality report.
+2. **Transform:** Removes exact duplicate records, standardises values and generates a data-quality report.
 3. **Validate:** Checks data quality and separates valid and invalid records.
 4. **Load:** Incrementally loads new valid records and quarantined records into separate SQL Server tables.
 
-### Workflow
+### ETL Workflow
 
 ```mermaid
 flowchart TD
-    A[Multiple Raw CSV Files] --> B[Batch Extraction]
-    B --> C[Combine Datasets]
-    C --> D[Transform and Clean]
-    D --> E[Remove Exact Duplicates]
-    E --> F[Standardize Values]
-    F --> G[Generate Quality Report]
-    G --> H[Validate Data]
-    H --> I{Validation}
-    I -->|Valid| J[Valid Records]
-    I -->|Invalid| K[Quarantined Records]
-    J --> L[Incremental Loading]
+    A["Multiple Raw CSV Files"] --> B["Batch Extraction"]
+    B --> C["Combine Datasets"]
+    C --> D["Transform and Clean"]
+    D --> E["Remove Exact Duplicates"]
+    E --> F["Standardise Values"]
+    F --> G["Generate Quality Report"]
+    G --> H["Validate Data"]
+    H --> I{"Validation"}
+    I -->|Valid| J["Valid Records"]
+    I -->|Invalid| K["Quarantined Records"]
+    J --> L["Incremental Loading"]
     K --> L
-    L --> M[SQL Server]
-    M --> N[sales_orders]
-    M --> O[quarantined_sales_orders]
-    L --> P[Archive Source CSV Files]
-    B -.-> Q[Execution Logs]
+    L --> M["SQL Server"]
+    M --> N["sales_orders"]
+    M --> O["quarantined_sales_orders"]
+    L --> P["Archive Source CSV Files"]
+    B -.-> Q["Execution Logs"]
     H -.-> Q
     L -.-> Q
 ```
@@ -98,7 +112,7 @@ The incremental loading process:
 - Retrieves existing order IDs from both SQL Server tables.
 - Compares incoming order IDs against existing records.
 - Removes records whose order IDs have already been processed.
-- Removes duplicate order IDs within the incoming datasets.
+- Removes duplicate order IDs within incoming datasets.
 - Inserts only new valid and quarantined records.
 - Preserves previously loaded records.
 
@@ -106,15 +120,17 @@ This prevents duplicate order IDs from being loaded again when the pipeline is e
 
 ### Source-File Archiving
 
-After successful database loading, the pipeline automatically moves the processed CSV files from `data/raw/` to:
+After successful database loading, the pipeline automatically moves processed CSV files from `data/raw/` to:
 
 ```text
 data/processed/source_files/
 ```
 
-This keeps the raw input directory ready for new incoming datasets and retains the original source files for traceability.
+This keeps the raw input directory ready for new incoming datasets and retains original source files for traceability.
 
 If the database loading process fails, the source files are not archived.
+
+---
 
 ## 5. Dataset Description
 
@@ -139,8 +155,6 @@ The original dataset contains **1,012 records**, including 12 exact duplicate re
 | payment_method | Payment method |
 | order_status | Order processing status |
 
-The datasets intentionally include data-quality issues to demonstrate the ETL process.
-
 ### Identified Data Quality Issues
 
 - Missing values in customer_id, unit_price, region and payment_method.
@@ -152,6 +166,8 @@ The datasets intentionally include data-quality issues to demonstrate the ETL pr
 - Zero or negative unit prices.
 - Invalid shipping costs and discount values.
 
+---
+
 ## 6. Data Transformation and Validation
 
 ### Transformation
@@ -160,7 +176,7 @@ The transformation stage performs the following operations:
 
 - Removes exact duplicate records.
 - Strips unnecessary whitespace from text columns.
-- Standardizes order status and payment method capitalization.
+- Standardises order status and payment method capitalization.
 - Generates a data-quality report.
 - Saves the transformed dataset in the processed data directory.
 
@@ -191,13 +207,15 @@ The quarantine dataset includes a `quarantine_reason` column explaining why a re
 
 This allows invalid records to be investigated without allowing them into the main validated sales table.
 
+---
+
 ## 7. SQL Server Database Design
 
 The project uses a SQL Server database named `EcommerceDB`.
 
-Two tables are created:
+### Source Tables
 
-### dbo.sales_orders
+**dbo.sales_orders**
 
 Stores records that pass the validation rules.
 
@@ -205,15 +223,150 @@ Stores records that pass the validation rules.
 - Stores validated sales transactions.
 - Existing records are preserved during incremental loading.
 
-### dbo.quarantined_sales_orders
+**dbo.quarantined_sales_orders**
 
 Stores invalid records along with their quarantine reasons.
 
 The incremental loading process checks order IDs across both tables to avoid processing the same order ID again.
 
-SQL scripts are available in the `sql/` directory.
+SQL scripts are available in `sql/source/`.
 
-## 8. Project Structure
+---
+
+## 8. Data Warehouse Architecture
+
+The project includes a SQL Server data warehouse built using a **Star Schema dimensional model** to support analytical reporting and business intelligence.
+
+The warehouse consists of one central fact table connected to six dimension tables.
+
+### 8.1 Star Schema Diagram
+
+The following diagram illustrates the data warehouse architecture and its relationships.
+
+```mermaid
+erDiagram
+    DIM_CUSTOMER ||--o{ FACT_SALES : "customer_key"
+    DIM_PRODUCT ||--o{ FACT_SALES : "product_key"
+    DIM_DATE ||--o{ FACT_SALES : "date_key"
+    DIM_GEOGRAPHY ||--o{ FACT_SALES : "geography_key"
+    DIM_PAYMENT_METHOD ||--o{ FACT_SALES : "payment_method_key"
+    DIM_ORDER_STATUS ||--o{ FACT_SALES : "order_status_key"
+
+    DIM_CUSTOMER {
+        int customer_key PK
+        bigint customer_id
+    }
+
+    DIM_PRODUCT {
+        int product_key PK
+        bigint product_id
+        nvarchar product_name
+        nvarchar product_category
+    }
+
+    DIM_DATE {
+        int date_key PK
+        date full_date
+        int day_number
+        nvarchar day_name
+        int month_number
+        nvarchar month_name
+        int quarter_number
+        int year_number
+        int week_number
+    }
+
+    DIM_GEOGRAPHY {
+        int geography_key PK
+        nvarchar region
+        nvarchar country
+    }
+
+    DIM_PAYMENT_METHOD {
+        int payment_method_key PK
+        nvarchar payment_method
+    }
+
+    DIM_ORDER_STATUS {
+        int order_status_key PK
+        nvarchar order_status
+    }
+
+    FACT_SALES {
+        bigint sales_key PK
+        bigint order_id
+        int customer_key FK
+        int product_key FK
+        int date_key FK
+        int geography_key FK
+        int payment_method_key FK
+        int order_status_key FK
+        int quantity
+        decimal unit_price
+        decimal discount
+        decimal shipping_cost
+    }
+```
+
+### 8.2 Fact Table
+
+**dw.fact_sales**
+
+The central fact table stores sales transactions and measurable values.
+
+Key attributes:
+
+- `sales_key`: Surrogate primary key.
+- `order_id`: Unique order identifier.
+- Dimension foreign keys.
+- `quantity`
+- `unit_price`
+- `discount`
+- `shipping_cost`
+
+The grain of the fact table is **one row per sales order record**.
+
+### 8.3 Dimension Tables
+
+| Dimension | Purpose |
+|---|---|
+| `dw.dim_customer` | Customer information |
+| `dw.dim_product` | Product names and categories |
+| `dw.dim_date` | Daily, monthly, quarterly and yearly analysis |
+| `dw.dim_geography` | Region and country analysis |
+| `dw.dim_payment_method` | Payment-method analysis |
+| `dw.dim_order_status` | Order-status analysis |
+
+### 8.4 Data Warehouse Features
+
+- Star Schema dimensional modelling.
+- Surrogate keys for dimension tables.
+- Foreign key relationships between fact and dimension tables.
+- Unknown dimension members for handling missing values.
+- Incremental loading of new records.
+- Stored procedure-based warehouse loading.
+- ETL execution auditing and error logging.
+- Duplicate prevention and data reconciliation.
+
+### 8.5 Warehouse ETL Workflow
+
+1. Extract incoming CSV files from the raw data folder.
+2. Transform and standardise the extracted records.
+3. Validate records and separate invalid records into quarantine.
+4. Incrementally load valid records into the SQL Server source tables.
+5. Execute the `dw.usp_load_warehouse` stored procedure from Python.
+6. Load new records into the warehouse dimensions and fact table.
+7. Record execution details in `dw.etl_audit_log`.
+8. Archive successfully processed source CSV files.
+
+### 8.6 Warehouse Documentation
+
+- [Star Schema Documentation](sql/warehouse/Documentation/star_schema.md)
+- [ETL Workflow Documentation](sql/warehouse/Documentation/ETL_Workflow.md)
+
+---
+
+## 9. Project Structure
 
 ```text
 ETL_Project/
@@ -235,20 +388,27 @@ ETL_Project/
 │   ├── transform.py
 │   └── validate.py
 │
-├── sql/
-│   ├── create_database.sql
-│   ├── create_tables.sql
-│   └── query.sql
-│
 ├── tests/
-│   ├── test_connection.py
-│   ├── test_explore_data.py
-│   ├── test_extract.py
-│   ├── test_load.py
-│   ├── test_logging_config.py
-│   ├── test_profile_data.py
-│   ├── test_transform.py
-│   └── test_validate.py
+│
+├── sql/
+│   ├── source/
+│   │   ├── create_database.sql
+│   │   ├── create_tables.sql
+│   │   └── query.sql
+│   │
+│   └── warehouse/
+│       ├── 01_setup/
+│       ├── 02_initial_load/
+│       ├── 03_procedures/
+│       ├── 04_validation/
+│       └── Documentation/
+│           ├── ETL_Workflow.md
+│           └── star_schema.md
+│
+├── reports/
+│   ├── ETL_Dashboard.pbix
+│   ├── Ecommerce_Dashboard_DW.pbix
+│   └── Screenshots/
 │
 ├── main.py
 ├── requirements.txt
@@ -260,7 +420,98 @@ ETL_Project/
 
 **Note:** Raw datasets, processed datasets, log files, virtual environments and the actual `.env` configuration file are excluded from Git tracking.
 
-## 9. Installation and Setup
+---
+
+## 10. Power BI Data Warehouse Dashboard
+
+A three-page interactive Power BI dashboard connected directly to the SQL Server data warehouse using the Star Schema model.
+
+### 10.1 Dashboard Pages
+
+**1. Executive Overview**
+
+- Total Revenue
+- Total Orders
+- Total Units Sold
+- Average Order Value (AOV)
+- Average Selling Price (ASP)
+- Monthly revenue trends
+- Revenue by product category and country
+
+**2. Product & Regional Performance**
+
+- Top 10 products by revenue
+- Revenue by product category
+- Average order value by country
+- Units sold by category
+- Orders by payment method
+
+**3. Operations & Order Analysis**
+
+- Delivery rate
+- Total shipping costs
+- Orders by order status
+- Monthly order volume
+- Average discount by category
+- Shipping cost analysis by country
+
+### 10.2 Data Model
+
+The dashboard uses seven warehouse tables:
+
+- `dw.fact_sales`
+- `dw.dim_customer`
+- `dw.dim_product`
+- `dw.dim_date`
+- `dw.dim_geography`
+- `dw.dim_payment_method`
+- `dw.dim_order_status`
+
+### 10.3 Key Features
+
+- Star Schema dimensional model.
+- Six one-to-many relationships.
+- DAX-based business KPIs.
+- Interactive country, date and category slicers.
+- Monthly, geographical and product-level analysis.
+- Warehouse-powered reporting.
+
+### 10.4 Power BI Report Files
+
+| Report | Description |
+|---|---|
+| `ETL_Dashboard.pbix` | Original three-page sales dashboard |
+| `Ecommerce_Dashboard_DW.pbix` | Warehouse-connected dashboard |
+
+Both reports are available in the `reports/` directory.
+
+### 10.5 Screenshots of the Report
+
+The following screenshots showcase the three pages of the warehouse-connected Power BI dashboard.
+
+**Executive Overview**
+
+[View Executive Overview Screenshot](reports/Screenshots/executive_overview.png.png)
+
+![Executive Overview](reports/Screenshots/executive_overview.png.png)
+
+**Product & Regional Performance**
+
+[View Product & Regional Performance Screenshot](reports/Screenshots/product_performance.png.png)
+
+![Product Performance](reports/Screenshots/product_performance.png.png)
+
+**Operations & Order Analysis**
+
+[View Operations & Order Analysis Screenshot](reports/Screenshots/operations_analysis.png.png)
+
+![Operations Analysis](reports/Screenshots/operations_analysis.png.png)
+
+[Download the Power BI Data Warehouse Dashboard](reports/Ecommerce_Dashboard_DW.pbix)
+
+---
+
+## 11. Installation and Setup
 
 ### Prerequisites
 
@@ -269,6 +520,7 @@ ETL_Project/
 - SQL Server Management Studio (SSMS) or VS Code SQL Server extension.
 - Microsoft ODBC Driver 17 for SQL Server.
 - Git installed.
+- Power BI Desktop (for opening the dashboard).
 
 ### Step 1: Clone the Repository
 
@@ -321,16 +573,28 @@ Update the server name to match your SQL Server instance.
 
 **The `.env` file should never be committed to GitHub.**
 
-### Step 5: Create the Database and Tables
+### Step 5: Create the Source Database and Tables
 
 Execute the SQL scripts in the following order:
 
-1. `sql/create_database.sql`
-2. `sql/create_tables.sql`
+1. `sql/source/create_database.sql`
+2. `sql/source/create_tables.sql`
 
-This creates the `EcommerceDB` database and the required tables.
+This creates the `EcommerceDB` database and the required source tables.
 
-### Step 6: Add Raw Datasets
+### Step 6: Set Up the Data Warehouse
+
+Execute the warehouse SQL scripts in the documented order:
+
+1. `01_setup/`
+2. `02_initial_load/`
+3. `03_procedures/`
+
+Use the validation scripts in `04_validation/` to verify the warehouse.
+
+Refer to the warehouse documentation for details.
+
+### Step 7: Add Raw Datasets
 
 Place one or more source CSV files inside:
 
@@ -342,7 +606,7 @@ The pipeline automatically discovers all CSV files in this directory.
 
 **Important:** All incoming CSV files must have the same column names and column order.
 
-### Step 7: Run the ETL Pipeline
+### Step 8: Run the ETL Pipeline
 
 From the project root, execute:
 
@@ -356,9 +620,10 @@ The pipeline automatically performs:
 2. Data transformation and cleaning.
 3. Data validation and quarantine separation.
 4. Incremental loading into SQL Server.
-5. Source-file archiving after successful loading.
+5. Incremental warehouse loading through the stored procedure.
+6. Source-file archiving after successful processing.
 
-### Step 8: Run Automated Tests
+### Step 9: Run Automated Tests
 
 Execute:
 
@@ -372,9 +637,11 @@ To run tests with coverage:
 python -m pytest --cov=scripts --cov-report=term-missing
 ```
 
-## 10. Execution Results
+---
 
-The following results represent an initial execution using the original dataset, rather than the cumulative results from subsequent batch executions.
+## 12. Execution Results
+
+The following results represent an initial execution using the original dataset, rather than cumulative results from subsequent batch executions.
 
 | Metric | Initial Result |
 |---|---:|
@@ -405,7 +672,9 @@ These checks confirmed that the initial database load contained the expected rec
 
 *Execution time is based on one observed run and may vary depending on the system and dataset size.*
 
-## 11. Automated Testing and Code Coverage
+---
+
+## 13. Automated Testing and Code Coverage
 
 The project includes automated tests using **Pytest** to verify individual ETL components.
 
@@ -453,7 +722,9 @@ The project achieved **98% overall test coverage** in the latest reported test r
 
 The test suite helps verify pipeline behaviour, identify regressions and improve code reliability.
 
-## 12. Logging and Monitoring
+---
+
+## 14. Logging and Monitoring
 
 The project uses Python's logging module with console and rotating file handlers.
 
@@ -478,140 +749,13 @@ logs/etl_pipeline.log
 
 The logging configuration uses a rotating file handler with a maximum file size of 5 MB and three backup files.
 
-## 13. Data Warehouse Architecture
+The data warehouse also includes an audit table:
 
-The project includes a SQL Server data warehouse built using a **Star Schema** to support analytical reporting and business intelligence.
+`dw.etl_audit_log`
 
-The warehouse consists of one central fact table and six dimension tables.
+This records warehouse execution details, inserted records, failed records and execution status.
 
-### Star Schema
-
-The central `dw.fact_sales` table stores sales transactions and measures, while the dimension tables provide descriptive information for analytical queries.
-
-**Fact Table**
-- `dw.fact_sales`
-
-**Dimension Tables**
-- `dw.dim_customer`
-- `dw.dim_product`
-- `dw.dim_date`
-- `dw.dim_geography`
-- `dw.dim_payment_method`
-- `dw.dim_order_status`
-
-The detailed schema diagram is available in [`star_schema.md`](sql/warehouse/documentation/star_schema.md).
-
-### Warehouse ETL Workflow
-
-1. Extract incoming CSV files from the raw data folder.
-2. Transform and standardise the extracted records.
-3. Validate records and separate invalid records into quarantine.
-4. Incrementally load valid records into the SQL Server source tables.
-5. Execute the `dw.usp_load_warehouse` stored procedure from Python.
-6. Load new records into the warehouse dimensions and fact table.
-7. Record execution details in `dw.etl_audit_log`.
-8. Archive successfully processed source CSV files.
-
-### Data Warehouse Features
-
-- Star Schema dimensional modelling.
-- Surrogate keys for dimension tables.
-- Foreign key relationships between fact and dimension tables.
-- Unknown dimension members for handling missing values.
-- Incremental loading of new records.
-- Stored procedure-based warehouse loading.
-- ETL execution auditing and error logging.
-- Duplicate prevention and data reconciliation.
-
-### ### Technical Documentation
-
-- [Star Schema Diagram](sql/warehouse/documentation/star_schema.md)
-- [ETL Workflow Diagram](sql/warehouse/documentation/etl_workflow.md)
-
-## 14. Power BI Data Warehouse Dashboard
-
-A three-page interactive Power BI dashboard connected directly to the SQL Server data warehouse using a Star Schema model.
-
-### Dashboard Pages
-
-**1. Executive Overview**
-- Total Revenue
-- Total Orders
-- Total Units Sold
-- Average Order Value (AOV)
-- Average Selling Price (ASP)
-- Monthly revenue trends
-- Revenue by product category and country
-
-**2. Product & Regional Performance**
-- Top 10 products by revenue
-- Revenue by product category
-- Average order value by country
-- Units sold by category
-- Orders by payment method
-
-**3. Operations & Order Analysis**
-- Delivery rate
-- Total shipping costs
-- Orders by order status
-- Monthly order volume
-- Average discount by category
-- Shipping cost analysis by country
-
-### Data Model
-
-The dashboard uses seven warehouse tables:
-
-- `dw.fact_sales`
-- `dw.dim_customer`
-- `dw.dim_product`
-- `dw.dim_date`
-- `dw.dim_geography`
-- `dw.dim_payment_method`
-- `dw.dim_order_status`
-
-### Key Features
-
-- Star Schema dimensional model
-- Six one-to-many relationships
-- DAX-based business KPIs
-- Interactive country, date and category slicers
-- Monthly, geographical and product-level analysis
-- Incrementally refreshed warehouse data
-
-### Report File
-
-The Power BI report is available in:
-
-`reports/Ecommerce_Dashboard_DW.pbix`
-
-Open the file using Power BI Desktop.
-
-### Screenshots of the Report
-
-The following screenshots showcase the three pages of the interactive Power BI dashboard.
-
-**1. Executive Overview**
-
-[View Executive Overview Screenshot](reports/Screenshots/executive_overview.png)
-
-![Executive Overview](reports/Screenshots/executive_overview.png)
-
-**2. Product & Regional Performance**
-
-[View Product & Regional Performance Screenshot](reports/Screenshots/product_performance.png)
-
-![Product Performance](reports/Screenshots/product_performance.png)
-
-**3. Operations & Order Analysis**
-
-[View Operations & Order Analysis Screenshot](reports/Screenshots/operations_analysis.png)
-
-![Operations Analysis](reports/Screenshots/operations_analysis.png)
-
-### Download the Power BI Report
-
-[Download Ecommerce Dashboard DW](reports/Ecommerce_Dashboard_DW.pbix)
+---
 
 ## 15. Future Enhancements
 
@@ -623,7 +767,9 @@ Potential improvements for future versions include:
 - Implementing pipeline orchestration using Apache Airflow or similar tools.
 - Adding database-level audit and load-history tracking.
 - Improving scalability for larger datasets.
+- Automating Power BI dataset refreshes.
 
+---
 
 ## 16. Author
 
@@ -635,4 +781,4 @@ Interests: Data Engineering, Business Intelligence, Data Analytics and Python.
 
 ---
 
-*This project was developed as a practical learning project to demonstrate an end-to-end batch ETL workflow using Python and Microsoft SQL Server.*
+*This project was developed as a practical learning project to demonstrate an end-to-end data engineering and business intelligence workflow using Python, Microsoft SQL Server and Power BI.*
