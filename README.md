@@ -491,6 +491,7 @@ The following screenshots showcase the three pages of the warehouse-connected Po
 
 ## Power BI Dashboard Screenshots
 
+
 ### 1. Executive Overview
 ![Executive Overview](reports/Screenshots/executive_overview.png)
 
